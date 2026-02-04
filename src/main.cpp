@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <stdexcept>
 #include <memory>
+#include <cmath>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -71,20 +72,130 @@ static void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
     input->m_scrollY += yoffset;
 }
 
+// OrbitCamera
+struct Vec3
+{
+    float x, y, z;
+
+    Vec3 operator+(const Vec3& r) const { return { x + r.x, y + r.y, z + r.z }; }
+    Vec3 operator-(const Vec3& r) const { return { x - r.x, y - r.y, z - r.z }; }
+    Vec3 operator*(float s) const { return { x * s, y * s, z * s }; }
+};
+
+static float Dot(const Vec3& a, const Vec3& b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+static Vec3 Cross(const Vec3& a, const Vec3& b)
+{
+    return {
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
+    };
+}
+
+static Vec3 Normalize(const Vec3& v)
+{
+    const float len2 = Dot(v, v);
+    if (len2 <= 0.0f) return { 0,0,0 };
+    const float invLen = 1.0f / std::sqrt(len2);
+    return { v.x * invLen, v.y * invLen, v.z * invLen };
+}
+
+struct Mat4
+{
+    float m[16]{};
+
+    static Mat4 Identity()
+    {
+        Mat4 r;
+        r.m[0] = r.m[5] = r.m[10] = r.m[15] = 1.0f;
+        return r;
+	}
+};
+
+static Mat4 Mul(const Mat4& a, const Mat4& b)
+{
+    Mat4 r{};
+    for (int c = 0; c < 4; ++c)
+    {
+        for (int r0 = 0; r0 < 4; ++r0)
+        {
+            r.m[c * 4 + r0] =
+                a.m[0 * 4 + r0] * b.m[c * 4 + 0] +
+                a.m[1 * 4 + r0] * b.m[c * 4 + 1] +
+                a.m[2 * 4 + r0] * b.m[c * 4 + 2] +
+                a.m[3 * 4 + r0] * b.m[c * 4 + 3];
+        }
+    }
+    return r;
+}
+
+// OpenGLでよくある lookAt（右手系）
+static Mat4 LookAtRH(const Vec3& eye, const Vec3& center, const Vec3& up)
+{
+    // カメラの前方向（centerへ向かう）
+    Vec3 f = Normalize(center - eye);
+    // 右方向
+    Vec3 s = Normalize(Cross(f, up));
+    // 上方向（正規直交化）
+    Vec3 u = Cross(s, f);
+
+    Mat4 r = Mat4::Identity();
+
+    // 列優先で配置（OpenGLの一般形）
+    r.m[0] = s.x;
+    r.m[4] = s.y;
+    r.m[8] = s.z;
+
+    r.m[1] = u.x;
+    r.m[5] = u.y;
+    r.m[9] = u.z;
+
+    // 右手系なので -f を入れる
+    r.m[2] = -f.x;
+    r.m[6] = -f.y;
+    r.m[10] = -f.z;
+
+    r.m[12] = -Dot(s, eye);
+    r.m[13] = -Dot(u, eye);
+    r.m[14] = Dot(f, eye); // -Dot(-f, eye) と同じ
+
+    return r;
+}
+
+static Mat4 PerspectiveRH(float fovY, float aspect, float zNear, float zFar)
+{
+    // 視野角の強さ
+    const float f = 1.0f / std::tan(fovY * 0.5f);
+
+    Mat4 r{};
+    r.m[0] = f / aspect;
+    r.m[5] = f;
+    r.m[10] = (zFar + zNear) / (zNear - zFar);
+    r.m[11] = -1.0f;
+    r.m[14] = (2.0f * zFar * zNear) / (zNear - zFar);
+    // r.m[15] = 0.0f; // 省略（0初期化済み）
+
+    return r;
+}
+
 struct OrbitCamera
 {
-	float m_yaw = 0.0f;
-	float m_pitch = 0.0f;
-	float m_distance = 5.0f;
+    float m_yaw = 0.0f;
+    float m_pitch = 0.0f;
+    float m_distance = 5.0f;
 
-	float m_targetX = 0.0f;
-	float m_targetY = 0.0f;
-	float m_targetZ = 0.0f;
+    float m_targetX = 0.0f;
+    float m_targetY = 0.0f;
+    float m_targetZ = 0.0f;
 
     void orbit(float deltaX, float deltaY)
     {
-        const float kRotateSpeed = 0.005f;
-		m_yaw += deltaX * kRotateSpeed;
+        const float kRotateSpeed = 0.001f;
+        m_yaw += deltaX * kRotateSpeed;
         m_pitch += deltaY * kRotateSpeed;
 
         // Clamp pitch
@@ -111,6 +222,29 @@ struct OrbitCamera
         const float kPan = 0.01f * m_distance;
         m_targetX += -dx * kPan;
         m_targetY += dy * kPan;
+    }
+
+    Vec3 target() const
+    {
+        return { m_targetX, m_targetY, m_targetZ };
+	}
+
+    Vec3 eye() const
+    {
+        // yaw/pitch からターゲット→カメラ方向
+        const float cy = std::cos(m_yaw);
+        const float sy = std::sin(m_yaw);
+        const float cp = std::cos(m_pitch);
+        const float sp = std::sin(m_pitch);
+
+        Vec3 dir = { cp * sy, sp, cp * cy }; // 単位ベクトルになる
+        return target() + dir * m_distance;
+	}
+
+    Mat4 viewMatrix() const
+    {
+        const Vec3 up = { 0.0f, 1.0f, 0.0f };
+        return LookAtRH(eye(), target(), up);
     }
 };
 
@@ -266,8 +400,29 @@ private:
             m_camera.zoom((float)m_input.m_scrollY);
         }
 
+        const Vec3 e = m_camera.eye();
+        const Mat4 v = m_camera.viewMatrix();
+
+        // フレームバッファサイズ
+        int w, h;
+        glfwGetFramebufferSize(m_window.get(), &w, &h);
+        float aspect = (h > 0) ? (float)w / (float)h : 1.0f;
+
+        // Camera matrices
+        Mat4 view = m_camera.viewMatrix();
+        Mat4 proj = PerspectiveRH(
+            60.0f * 3.1415926f / 180.0f, // fovY = 60°
+            aspect,
+            0.1f,   // near
+            1000.0f // far
+        );
+
+        Mat4 vp = Mul(proj, view);
+
         // ---- デバッグUI ----
+        ImGui::SetNextWindowSize(ImVec2(400, 220), ImGuiCond_Once);
         ImGui::Begin("Camera Debug");
+
         ImGui::Text("Yaw    : %.3f", m_camera.m_yaw);
         ImGui::Text("Pitch  : %.3f", m_camera.m_pitch);
         ImGui::Text("Dist   : %.3f", m_camera.m_distance);
@@ -275,6 +430,21 @@ private:
             m_camera.m_targetX,
             m_camera.m_targetY,
             m_camera.m_targetZ);
+
+        ImGui::Separator();
+
+        ImGui::Text("Eye   : %.2f %.2f %.2f", e.x, e.y, e.z);
+        ImGui::Text("View m[12..14] (translation): %.3f %.3f %.3f", v.m[12], v.m[13], v.m[14]);
+
+		ImGui::Separator();
+
+        ImGui::Text("View T : %.2f %.2f %.2f",
+            view.m[12], view.m[13], view.m[14]);
+
+        ImGui::Text("Proj m[0] (f/aspect): %.2f", proj.m[0]);
+        ImGui::Text("Proj m[5] (f)       : %.2f", proj.m[5]);
+        ImGui::Text("Proj m[10] (z)      : %.2f", proj.m[10]);
+
         ImGui::End();
     }
 
