@@ -62,17 +62,17 @@ std::vector<Vertex> geometry_gen::generateCubeWire(float s)
     return cube;
 }
 
-std::vector<Vec3> geometry_gen::generateCubeSolidPositions(float s)
+std::vector<glm::vec3> geometry_gen::generateCubeSolidPositions(float s)
 {
     // 6 faces * 2 triangles * 3 verts = 36
-    std::vector<Vec3> v;
+    std::vector<glm::vec3> v;
     v.reserve(36);
 
-    auto tri = [&](Vec3 a, Vec3 b, Vec3 c) { v.push_back(a); v.push_back(b); v.push_back(c); };
+    auto tri = [&](glm::vec3 a, glm::vec3 b, glm::vec3 c) { v.push_back(a); v.push_back(b); v.push_back(c); };
 
     // corners
-    Vec3 p000{ -s,-s,-s }, p001{ -s,-s, s }, p010{ -s, s,-s }, p011{ -s, s, s };
-    Vec3 p100{ s,-s,-s }, p101{ s,-s, s }, p110{ s, s,-s }, p111{ s, s, s };
+    glm::vec3 p000{ -s,-s,-s }, p001{ -s,-s, s }, p010{ -s, s,-s }, p011{ -s, s, s };
+    glm::vec3 p100{ s,-s,-s }, p101{ s,-s, s }, p110{ s, s,-s }, p111{ s, s, s };
 
     // +X face (ID=1) : p100 p101 p111 p110
     tri(p100, p101, p111); tri(p100, p111, p110);

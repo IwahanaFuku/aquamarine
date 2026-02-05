@@ -3,6 +3,8 @@
 #include "stdexcept"
 #include "memory"
 
+#include "glm/glm.hpp"
+
 #include "camera/orbit_camera.h"
 #include "platform/imgui_context_guard.h"
 #include "platform/platform.h"
@@ -28,6 +30,6 @@ private:
     uint32_t m_selectedFace = 0;
     static void setGLState();
     void updateCameraFromInput();
-    Mat4 computeVP(int fbW, int fbH) const;
+    glm::mat4 computeVP(int fbW, int fbH) const;
     void drawUI();
 };

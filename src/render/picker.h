@@ -3,7 +3,7 @@
 #include "stdexcept"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
-#include "math/math.h"
+#include "glm/glm.hpp"
 
 class Picker
 {
@@ -15,7 +15,7 @@ public:
     bool isReady() const;
     void updateRequest();
     bool hasRequest() const;
-    uint32_t pick(const Mat4& vp, int fbW, int fbH);
+    uint32_t pick(const glm::mat4& vp, int fbW, int fbH);
     void destroy();
 
     Picker(const Picker&) = delete;
@@ -40,6 +40,6 @@ private:
     void createShader();
 
     void ensureFBO(int w, int h);
-    uint32_t doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, double mouseY);
+    uint32_t doPicking(const glm::mat4& view, int fbW, int fbH, double mouseX, double mouseY);
 };
 

@@ -30,6 +30,16 @@ target_include_directories(glad_local PUBLIC
 target_link_libraries(glad_local PUBLIC opengl32)
 
 # -----------------------------
+# glm
+# -----------------------------
+FetchContent_Declare(
+  glm
+  GIT_REPOSITORY https://github.com/g-truc/glm.git
+  GIT_TAG 0.9.9.8
+)
+FetchContent_MakeAvailable(glm)
+
+# -----------------------------
 # Dear ImGui
 # -----------------------------
 FetchContent_Declare(
@@ -57,6 +67,7 @@ target_include_directories(imgui_lib PUBLIC
 )
 
 target_link_libraries(imgui_lib PUBLIC glfw)
+
 
 # -----------------------------
 # Executable
@@ -110,6 +121,7 @@ target_link_libraries(aquamarine PRIVATE
   glfw
   glad_local
   imgui_lib
+  glm::glm
 )
 
 target_compile_definitions(aquamarine PRIVATE GLFW_INCLUDE_NONE)

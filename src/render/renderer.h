@@ -1,6 +1,7 @@
 #pragma once
 
-#include "render/geometry_gen.h"
+#include "glm/glm.hpp"
+
 #include "render/line_program.h"
 #include "render/line_mesh.h"
 
@@ -12,7 +13,7 @@ public:
 
     void init();
     void destroy();
-    void draw(const Mat4& vp, int w, int h, uint32_t selectedFace);
+    void draw(const glm::mat4& view, int w, int h, uint32_t selectedFace);
 
     GLuint cubeSolidVAO() const { return m_cubeSolidVAO; }
 
@@ -35,5 +36,5 @@ private:
 
     void createSolidShader();
     void generateCubeSolidMesh();
-    void drawSelectedFaceFill(const Mat4& vp, uint32_t selectedFace);
+    void drawSelectedFaceFill(const glm::mat4& view, uint32_t selectedFace);
 };

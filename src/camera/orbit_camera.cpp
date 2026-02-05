@@ -1,14 +1,15 @@
 #include "camera/orbit_camera.h"
 
 #include "cmath"
+#include "glm/gtc/matrix_transform.hpp"
 
 OrbitCamera::OrbitCamera() = default;
 
 void OrbitCamera::orbit(float dx, float dy)
 {
-    constexpr float k = 0.001f;
-    m_yaw -= dx * k;
-    m_pitch += dy * k;
+    constexpr float speed = 0.005f;
+    m_yaw -= dx * speed;
+    m_pitch += dy * speed;
 
     constexpr float limit = 1.553343f; // ~89deg
     if (m_pitch > limit) m_pitch = limit;
@@ -27,32 +28,47 @@ void OrbitCamera::zoom(float wheel)
 
 void OrbitCamera::pan(float dxPixels, float dyPixels, int fbW, int fbH)
 {
-    Mat4 view = viewMatrix();
+    if (fbH <= 0) return;
 
-    Vec3 right{ view.m[0], view.m[4], view.m[8] };
-    Vec3 up{ view.m[1], view.m[5], view.m[9] };
+    // camera basis in WORLD
+    const glm::vec3 eye = eyePosition();
+    const glm::vec3 fwd = glm::normalize(m_target - eye);          // eye->target
+    const glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
 
-    const float fovY = 60.0f * 3.1415926f / 180.0f;
-    const float worldPerPixel =
-        (2.0f * m_distance * std::tan(fovY * 0.5f)) / float(fbH);
+    glm::vec3 right = glm::normalize(glm::cross(fwd, worldUp));
+    glm::vec3 up = glm::normalize(glm::cross(right, fwd));
 
-    m_target = m_target
-        + right * (-dxPixels * worldPerPixel)
-        + up * (dyPixels * worldPerPixel);
+    // pixels -> world scale
+    const float fovY = glm::radians(60.0f);
+    constexpr float speed = 4.0f;
+    const float worldPerPixel = (speed * m_distance * std::tan(fovY * 0.5f)) / float(fbH);
+
+    // “掴んで動かす”感覚（一般的）
+    m_target += right * (-dxPixels * worldPerPixel);
+    m_target += up * (dyPixels * worldPerPixel);
 }
 
-Mat4 OrbitCamera::viewMatrix() const
+glm::mat4 OrbitCamera::viewMatrix() const
 {
-    return LookAtRH(eyePosition(), m_target, { 0,1,0 });
+    const glm::vec3 eye = eyePosition();
+    const glm::vec3 center = m_target;
+    const glm::vec3 up = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f));
+
+    return glm::lookAt(eye, center, up);
 }
 
-Vec3 OrbitCamera::eyePosition() const
+glm::vec3 OrbitCamera::eyePosition() const
 {
-    const float cy = std::cos(m_yaw);
-    const float sy = std::sin(m_yaw);
-    const float cp = std::cos(m_pitch);
-    const float sp = std::sin(m_pitch);
+    float cy = std::cos(m_yaw);
+    float sy = std::sin(m_yaw);
+    float cp = std::cos(m_pitch);
+    float sp = std::sin(m_pitch);
 
-    Vec3 dir{ cp * sy, sp, cp * cy };
+    glm::vec3 dir{
+        cp * sy,
+        sp,
+        cp * cy
+    };
+
     return m_target + dir * m_distance;
 }

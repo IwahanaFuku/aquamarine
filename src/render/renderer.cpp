@@ -5,6 +5,9 @@
 
 #include "glad/glad.h"
 
+#include "glm/gtc/type_ptr.hpp"
+
+#include "render/geometry_gen.h"
 #include "render/shader_utils.h"
 
 Renderer::Renderer() = default;
@@ -39,7 +42,7 @@ void Renderer::destroy()
     m_solidLocColor = -1;
 }
 
-void Renderer::draw(const Mat4& vp, int w, int h, uint32_t selectedFace)
+void Renderer::draw(const glm::mat4& view, int w, int h, uint32_t selectedFace)
 {
     glViewport(0, 0, w, h);
     glClearColor(0.1f, 0.1f, 0.12f, 1.0f);
@@ -47,7 +50,7 @@ void Renderer::draw(const Mat4& vp, int w, int h, uint32_t selectedFace)
 
     // まず線（グリッド・ワイヤ）
     glUseProgram(m_lineProg.m_prog);
-    glUniformMatrix4fv(m_lineProg.m_locMVP, 1, GL_FALSE, vp.m);
+    glUniformMatrix4fv(m_lineProg.m_locMVP, 1, GL_FALSE, glm::value_ptr(view));
 
     m_cubeWireMesh.draw();
     m_gridMesh.draw();
@@ -55,7 +58,7 @@ void Renderer::draw(const Mat4& vp, int w, int h, uint32_t selectedFace)
     glUseProgram(0);
 
     // 次に選択面ハイライト
-    drawSelectedFaceFill(vp, selectedFace);
+    drawSelectedFaceFill(view, selectedFace);
 }
 
 void Renderer::createSolidShader()
@@ -74,16 +77,16 @@ void Renderer::generateCubeSolidMesh()
 
     glBindVertexArray(m_cubeSolidVAO);
     glBindBuffer(GL_ARRAY_BUFFER, m_cubeSolidVBO);
-    glBufferData(GL_ARRAY_BUFFER, pos.size() * sizeof(Vec3), pos.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, pos.size() * sizeof(glm::vec3), pos.data(), GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-void Renderer::drawSelectedFaceFill(const Mat4& vp, uint32_t selectedFace)
+void Renderer::drawSelectedFaceFill(const glm::mat4& view, uint32_t selectedFace)
 {
     if (selectedFace == 0) return;
 
@@ -103,7 +106,7 @@ void Renderer::drawSelectedFaceFill(const Mat4& vp, uint32_t selectedFace)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glUseProgram(m_solidProg);
-    glUniformMatrix4fv(m_solidLocMVP, 1, GL_FALSE, vp.m);
+    glUniformMatrix4fv(m_solidLocMVP, 1, GL_FALSE, glm::value_ptr(view));
     glUniform4f(m_solidLocColor, 1.0f, 0.8f, 0.2f, 0.25f);
 
     glBindVertexArray(m_cubeSolidVAO);

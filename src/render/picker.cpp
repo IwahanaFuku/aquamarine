@@ -1,6 +1,7 @@
 #include "picker.h"
 
 #include "imgui.h"
+#include "glm/gtc/type_ptr.hpp"
 
 #include "render/shader_utils.h"
 
@@ -46,7 +47,7 @@ bool Picker::hasRequest() const
     return m_pickRequested;
 }
 
-uint32_t Picker::pick(const Mat4& vp, int fbW, int fbH)
+uint32_t Picker::pick(const glm::mat4& vp, int fbW, int fbH)
 {
     if (!m_pickRequested) return 0;
 
@@ -109,7 +110,7 @@ void Picker::ensureFBO(int w, int h)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-uint32_t Picker::doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, double mouseY)
+uint32_t Picker::doPicking(const glm::mat4& view, int fbW, int fbH, double mouseX, double mouseY)
 {
     ensureFBO(fbW, fbH);
 
@@ -131,7 +132,7 @@ uint32_t Picker::doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, doub
     glClear(GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(m_prog);
-    glUniformMatrix4fv(m_locMVP, 1, GL_FALSE, vp.m);
+    glUniformMatrix4fv(m_locMVP, 1, GL_FALSE, glm::value_ptr(view));
 
     glBindVertexArray(m_cubeSolidVAO);
 

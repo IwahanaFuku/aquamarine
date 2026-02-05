@@ -10,7 +10,8 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
-#include "math/math.h"
+#include "glm/gtc/matrix_transform.hpp"
+
 #include "platform/input.h"
 
 App::App()
@@ -56,11 +57,11 @@ void App::run()
         // ---- 4) compute matrices ----
         int fbW = 0, fbH = 0;
         m_platform.framebufferSize(fbW, fbH);
-        Mat4 vp = computeVP(fbW, fbH);
+        glm::mat4 view = computeVP(fbW, fbH);
 
         // ---- 5) picking ----
         if (m_picker.hasRequest())
-            m_selectedFace = m_picker.pick(vp, fbW, fbH);
+            m_selectedFace = m_picker.pick(view, fbW, fbH);
 
         // ---- 6) UI ----
         drawUI();
@@ -68,7 +69,7 @@ void App::run()
         // ---- 7) render ----
         ImGui::Render();
 
-        m_renderer.draw(vp, fbW, fbH, m_selectedFace);
+        m_renderer.draw(view, fbW, fbH, m_selectedFace);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(m_platform.window());
@@ -108,12 +109,12 @@ void App::updateCameraFromInput()
     m_camera.zoom((float)in.m_scrollY);
 }
 
-Mat4 App::computeVP(int fbW, int fbH) const
+glm::mat4 App::computeVP(int fbW, int fbH) const
 {
     const float aspect = (fbH > 0) ? (float)fbW / (float)fbH : 1.0f;
-    Mat4 view = m_camera.viewMatrix();
-    Mat4 proj = PerspectiveRH(60.0f * 3.1415926f / 180.0f, aspect, 0.1f, 1000.0f);
-    return Mul(proj, view);
+    glm::mat4 view = m_camera.viewMatrix();
+    glm::mat4 proj = glm::perspectiveRH(60.0f * 3.1415926f / 180.0f, aspect, 0.1f, 1000.0f);
+    return proj * view;
 }
 
 void App::drawUI()
