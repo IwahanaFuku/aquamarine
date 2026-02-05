@@ -99,6 +99,13 @@ target_sources(aquamarine PRIVATE
     src/render/vertex.h
 )
 
+add_custom_command(
+    TARGET aquamarine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:aquamarine>/assets
+)
+
 target_link_libraries(aquamarine PRIVATE
   glfw
   glad_local

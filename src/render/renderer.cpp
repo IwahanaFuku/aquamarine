@@ -5,7 +5,6 @@
 
 #include "glad/glad.h"
 
-#include "render/geometry_gen.h"
 #include "render/shader_utils.h"
 
 Renderer::Renderer() = default;
@@ -61,32 +60,9 @@ void Renderer::draw(const Mat4& vp, int w, int h, uint32_t selectedFace)
 
 void Renderer::createSolidShader()
 {
-    const char* vs = R"(
-#version 330 core
-layout(location=0) in vec3 aPos;
-uniform mat4 uMVP;
-void main(){ gl_Position = uMVP * vec4(aPos, 1.0); }
-)";
-    const char* fs = R"(
-#version 330 core
-uniform vec4 uColor;
-out vec4 FragColor;
-void main(){ FragColor = uColor; }
-)";
-
-    GLuint sVS = shader_utils::CompileShader(GL_VERTEX_SHADER, vs);
-    GLuint sFS = shader_utils::CompileShader(GL_FRAGMENT_SHADER, fs);
-    if (!sVS || !sFS) throw std::runtime_error("Solid shader compile failed");
-
-    m_solidProg = shader_utils::LinkProgram(sVS, sFS);
-    glDeleteShader(sVS);
-    glDeleteShader(sFS);
-    if (!m_solidProg) throw std::runtime_error("Solid program link failed");
-
-    m_solidLocMVP = glGetUniformLocation(m_solidProg, "uMVP");
-    m_solidLocColor = glGetUniformLocation(m_solidProg, "uColor");
-    if (m_solidLocMVP < 0 || m_solidLocColor < 0)
-        throw std::runtime_error("Solid uniform not found");
+    m_solidProg = shader_utils::BuildProgramFromGLSLFile("assets/shaders/solid.glsl");
+    m_solidLocMVP = shader_utils::GetUniformOrThrow(m_solidProg, "uMVP");
+    m_solidLocColor = shader_utils::GetUniformOrThrow(m_solidProg, "uColor");
 }
 
 void Renderer::generateCubeSolidMesh()

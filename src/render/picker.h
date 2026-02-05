@@ -25,21 +25,21 @@ private:
     GLFWwindow* m_window = nullptr;
     GLuint m_cubeSolidVAO = 0;
 
-    GLuint m_pickFBO = 0;
-    GLuint m_pickTex = 0;
-    GLuint m_pickDepth = 0;
+    GLuint m_FBO = 0;
+    GLuint m_tex = 0;
+    GLuint m_depth = 0;
     int m_pickW = 0, m_pickH = 0;
 
-    GLuint m_pickProg = 0;
-    GLint  m_pickLocMVP = -1;
-    GLint  m_pickLocID = -1;
+    GLuint m_prog = 0;
+    GLint  m_locMVP = -1;
+    GLint  m_locID = -1;
 
     bool   m_pickRequested = false;
     double m_pickX = 0.0, m_pickY = 0.0;
 
-    void createPickShader();
+    void createShader();
 
-    void ensurePickFBO(int w, int h);
+    void ensureFBO(int w, int h);
     uint32_t doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, double mouseY);
 };
 

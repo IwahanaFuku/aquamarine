@@ -15,12 +15,12 @@ void Picker::init(GLFWwindow* window, GLuint cubeSolidVAO)
 {
     m_window = window;
     m_cubeSolidVAO = cubeSolidVAO;
-    createPickShader();
+    createShader();
 }
 
 bool Picker::isReady() const
 {
-    return m_pickProg != 0;
+    return m_prog != 0;
 }
 
 void Picker::updateRequest()
@@ -56,72 +56,49 @@ uint32_t Picker::pick(const Mat4& vp, int fbW, int fbH)
 
 void Picker::destroy()
 {
-    if (m_pickDepth) { glDeleteRenderbuffers(1, &m_pickDepth); m_pickDepth = 0; }
-    if (m_pickTex) { glDeleteTextures(1, &m_pickTex); m_pickTex = 0; }
-    if (m_pickFBO) { glDeleteFramebuffers(1, &m_pickFBO); m_pickFBO = 0; }
+    if (m_depth) { glDeleteRenderbuffers(1, &m_depth); m_depth = 0; }
+    if (m_tex) { glDeleteTextures(1, &m_tex); m_tex = 0; }
+    if (m_FBO) { glDeleteFramebuffers(1, &m_FBO); m_FBO = 0; }
 
-    if (m_pickProg) { glDeleteProgram(m_pickProg); m_pickProg = 0; }
-    m_pickLocMVP = -1;
-    m_pickLocID = -1;
+    if (m_prog) { glDeleteProgram(m_prog); m_prog = 0; }
+    m_locMVP = -1;
+    m_locID = -1;
 
     m_pickW = 0; m_pickH = 0;
 }
 
-void Picker::createPickShader()
+void Picker::createShader()
 {
-    const char* vs = R"(
-#version 330 core
-layout(location=0) in vec3 aPos;
-uniform mat4 uMVP;
-void main(){ gl_Position = uMVP * vec4(aPos, 1.0); }
-)";
-    const char* fs = R"(
-#version 330 core
-uniform uint uID;
-layout(location=0) out uint outID;
-void main(){ outID = uID; }
-)";
-
-    GLuint sVS = shader_utils::CompileShader(GL_VERTEX_SHADER, vs);
-    GLuint sFS = shader_utils::CompileShader(GL_FRAGMENT_SHADER, fs);
-    if (!sVS || !sFS) throw std::runtime_error("Pick shader compile failed");
-
-    m_pickProg = shader_utils::LinkProgram(sVS, sFS);
-    glDeleteShader(sVS);
-    glDeleteShader(sFS);
-    if (!m_pickProg) throw std::runtime_error("Pick program link failed");
-
-    m_pickLocMVP = glGetUniformLocation(m_pickProg, "uMVP");
-    m_pickLocID = glGetUniformLocation(m_pickProg, "uID");
-    if (m_pickLocMVP < 0 || m_pickLocID < 0)
-        throw std::runtime_error("Pick uniform not found");
+    m_prog = shader_utils::BuildProgramFromGLSLFile("assets/shaders/pick.glsl");
+    m_locMVP = shader_utils::GetUniformOrThrow(m_prog, "uMVP");
+    m_locID = shader_utils::GetUniformOrThrow(m_prog, "uID");
 }
 
-void Picker::ensurePickFBO(int w, int h)
+void Picker::ensureFBO(int w, int h)
 {
     if (w <= 0 || h <= 0) return;
-    if (m_pickFBO && w == m_pickW && h == m_pickH) return;
+    if (m_FBO && w == m_pickW && h == m_pickH) return;
 
-    if (m_pickDepth) { glDeleteRenderbuffers(1, &m_pickDepth); m_pickDepth = 0; }
-    if (m_pickTex) { glDeleteTextures(1, &m_pickTex); m_pickTex = 0; }
-    if (m_pickFBO) { glDeleteFramebuffers(1, &m_pickFBO); m_pickFBO = 0; }
+    if (m_depth) { glDeleteRenderbuffers(1, &m_depth); m_depth = 0; }
+    if (m_tex) { glDeleteTextures(1, &m_tex); m_tex = 0; }
+    if (m_FBO) { glDeleteFramebuffers(1, &m_FBO); m_FBO = 0; }
 
     m_pickW = w; m_pickH = h;
 
-    glGenFramebuffers(1, &m_pickFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_pickFBO);
+    glGenFramebuffers(1, &m_FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_FBO);
 
-    glGenTextures(1, &m_pickTex);
-    glBindTexture(GL_TEXTURE_2D, m_pickTex);
+    glGenTextures(1, &m_tex);
+    glBindTexture(GL_TEXTURE_2D, m_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, w, h, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_pickTex, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex, 0);
 
-    glGenRenderbuffers(1, &m_pickDepth);
-    glBindRenderbuffer(GL_RENDERBUFFER, m_pickDepth);
+    glGenRenderbuffers(1, &m_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_depth);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_pickDepth);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depth);
 
     GLenum drawBuf = GL_COLOR_ATTACHMENT0;
     glDrawBuffers(1, &drawBuf);
@@ -134,7 +111,7 @@ void Picker::ensurePickFBO(int w, int h)
 
 uint32_t Picker::doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, double mouseY)
 {
-    ensurePickFBO(fbW, fbH);
+    ensureFBO(fbW, fbH);
 
     // 範囲外ガード（DPI/ウィンドウ外クリック対策）
     int px = (int)mouseX;
@@ -142,7 +119,7 @@ uint32_t Picker::doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, doub
     if (px < 0 || px >= fbW || py < 0 || py >= fbH)
         return 0;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, m_pickFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_FBO);
     glViewport(0, 0, fbW, fbH);
 
     glDisable(GL_BLEND);
@@ -153,14 +130,14 @@ uint32_t Picker::doPicking(const Mat4& vp, int fbW, int fbH, double mouseX, doub
     glClearBufferuiv(GL_COLOR, 0, &clearID);
     glClear(GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(m_pickProg);
-    glUniformMatrix4fv(m_pickLocMVP, 1, GL_FALSE, vp.m);
+    glUseProgram(m_prog);
+    glUniformMatrix4fv(m_locMVP, 1, GL_FALSE, vp.m);
 
     glBindVertexArray(m_cubeSolidVAO);
 
     for (uint32_t face = 0; face < 6; ++face)
     {
-        glUniform1ui(m_pickLocID, face + 1);
+        glUniform1ui(m_locID, face + 1);
         glDrawArrays(GL_TRIANGLES, (GLint)(face * 6), 6);
     }
 
