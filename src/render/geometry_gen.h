@@ -10,5 +10,7 @@ namespace geometry_gen
 {
 	std::vector<Vertex> generateGrid(int half = 10, float step = 1.0f);
 	std::vector<Vertex> generateCubeWire(float s = 0.5f);
+	std::vector<Vertex> createCubeSharedVerts(float s = 0.5f);
+	std::vector<uint32_t> createCubeSharedIndices();
 	std::vector<glm::vec3> generateCubeSolidPositions(float s = 0.5f);
 }

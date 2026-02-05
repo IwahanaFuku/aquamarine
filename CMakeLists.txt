@@ -101,6 +101,10 @@ target_sources(aquamarine PRIVATE
     src/render/line_mesh.h
     src/render/line_program.cpp
     src/render/line_program.h
+    src/render/mesh.cpp
+    src/render/mesh.h
+    src/render/mesh_program.cpp
+    src/render/mesh_program.h
     src/render/picker.cpp
     src/render/picker.h
     src/render/renderer.cpp

@@ -23,16 +23,22 @@ void Renderer::init()
     m_gridMesh.upload(geometry_gen::generateGrid());
     m_cubeWireMesh.upload(geometry_gen::generateCubeWire());
 
+    auto verts = geometry_gen::createCubeSharedVerts(0.25f);
+    auto idx = geometry_gen::createCubeSharedIndices();
+    m_meshProg.create();
+    m_cubeMesh.upload(verts, idx);
+
     createSolidShader();
     generateCubeSolidMesh();
 }
 
 void Renderer::destroy()
 {
-    // Mesh/line は各destroyで安全に二重呼びOKにしておく
     m_gridMesh.destroy();
     m_cubeWireMesh.destroy();
     m_lineProg.destroy();
+    m_meshProg.destroy();
+    m_cubeMesh.destroy();
 
     if (m_cubeSolidVBO) { glDeleteBuffers(1, &m_cubeSolidVBO); m_cubeSolidVBO = 0; }
     if (m_cubeSolidVAO) { glDeleteVertexArrays(1, &m_cubeSolidVAO); m_cubeSolidVAO = 0; }
@@ -42,7 +48,7 @@ void Renderer::destroy()
     m_solidLocColor = -1;
 }
 
-void Renderer::draw(const glm::mat4& view, int w, int h, uint32_t selectedFace)
+void Renderer::draw(const glm::mat4& vp, int w, int h, uint32_t selectedFace)
 {
     glViewport(0, 0, w, h);
     glClearColor(0.1f, 0.1f, 0.12f, 1.0f);
@@ -50,15 +56,16 @@ void Renderer::draw(const glm::mat4& view, int w, int h, uint32_t selectedFace)
 
     // まず線（グリッド・ワイヤ）
     glUseProgram(m_lineProg.m_prog);
-    glUniformMatrix4fv(m_lineProg.m_locMVP, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(m_lineProg.m_locMVP, 1, GL_FALSE, glm::value_ptr(vp));
 
     m_cubeWireMesh.draw();
     m_gridMesh.draw();
+    m_cubeMesh.draw();
 
     glUseProgram(0);
 
     // 次に選択面ハイライト
-    drawSelectedFaceFill(view, selectedFace);
+    drawSelectedFaceFill(vp, selectedFace);
 }
 
 void Renderer::createSolidShader()
@@ -86,7 +93,7 @@ void Renderer::generateCubeSolidMesh()
     glBindVertexArray(0);
 }
 
-void Renderer::drawSelectedFaceFill(const glm::mat4& view, uint32_t selectedFace)
+void Renderer::drawSelectedFaceFill(const glm::mat4& vp, uint32_t selectedFace)
 {
     if (selectedFace == 0) return;
 
@@ -106,7 +113,7 @@ void Renderer::drawSelectedFaceFill(const glm::mat4& view, uint32_t selectedFace
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glUseProgram(m_solidProg);
-    glUniformMatrix4fv(m_solidLocMVP, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(m_solidLocMVP, 1, GL_FALSE, glm::value_ptr(vp));
     glUniform4f(m_solidLocColor, 1.0f, 0.8f, 0.2f, 0.25f);
 
     glBindVertexArray(m_cubeSolidVAO);

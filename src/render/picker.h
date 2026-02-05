@@ -40,6 +40,6 @@ private:
     void createShader();
 
     void ensureFBO(int w, int h);
-    uint32_t doPicking(const glm::mat4& view, int fbW, int fbH, double mouseX, double mouseY);
+    uint32_t doPicking(const glm::mat4& vp, int fbW, int fbH, double mouseX, double mouseY);
 };
 

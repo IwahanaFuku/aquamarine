@@ -57,11 +57,11 @@ void App::run()
         // ---- 4) compute matrices ----
         int fbW = 0, fbH = 0;
         m_platform.framebufferSize(fbW, fbH);
-        glm::mat4 view = computeVP(fbW, fbH);
+        glm::mat4 vp = computeVP(fbW, fbH);
 
         // ---- 5) picking ----
         if (m_picker.hasRequest())
-            m_selectedFace = m_picker.pick(view, fbW, fbH);
+            m_selectedFace = m_picker.pick(vp, fbW, fbH);
 
         // ---- 6) UI ----
         drawUI();
@@ -69,7 +69,7 @@ void App::run()
         // ---- 7) render ----
         ImGui::Render();
 
-        m_renderer.draw(view, fbW, fbH, m_selectedFace);
+        m_renderer.draw(vp, fbW, fbH, m_selectedFace);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(m_platform.window());

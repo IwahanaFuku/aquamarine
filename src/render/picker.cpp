@@ -110,7 +110,7 @@ void Picker::ensureFBO(int w, int h)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-uint32_t Picker::doPicking(const glm::mat4& view, int fbW, int fbH, double mouseX, double mouseY)
+uint32_t Picker::doPicking(const glm::mat4& vp, int fbW, int fbH, double mouseX, double mouseY)
 {
     ensureFBO(fbW, fbH);
 
@@ -132,7 +132,7 @@ uint32_t Picker::doPicking(const glm::mat4& view, int fbW, int fbH, double mouse
     glClear(GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(m_prog);
-    glUniformMatrix4fv(m_locMVP, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(m_locMVP, 1, GL_FALSE, glm::value_ptr(vp));
 
     glBindVertexArray(m_cubeSolidVAO);
 
